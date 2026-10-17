@@ -1,0 +1,37 @@
+name: AI Agent Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  deterministic-contract-tests:
+    name: Fast Contract & Trajectory Tests (Mocked)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run deterministic pytest suite
+        run: pytest -m "not live_eval" --junitxml=reports/contract-results.xml
+
+  live-gemini-evaluation:
+    name: Live Gemini Trajectory & Judge Eval
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Execute live evaluation against golden dataset
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: pytest -m "live_eval" --junitxml=reports/live-eval-results.xml
